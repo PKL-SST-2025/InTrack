@@ -143,7 +143,7 @@ function FillingForm(props: { dateLabel: string, onCancel: () => void, onSubmit:
               <img src={imagePreview()!} alt="Preview" class="object-contain w-full h-full" />
             </Show>
             <input
-              ref={el => (window.__imageInputRef = el)}
+              ref={el => ((window as any).__imageInputRef = el)}
               type="file"
               accept="image/*"
               class="hidden"
@@ -154,7 +154,7 @@ function FillingForm(props: { dateLabel: string, onCancel: () => void, onSubmit:
           <button
             class="mt-2 px-4 py-2 rounded-xl bg-orange-500 text-white font-semibold shadow hover:bg-orange-600 transition"
             onClick={() => {
-              if (window.__imageInputRef) window.__imageInputRef.click();
+              if ((window as any).__imageInputRef) (window as any).__imageInputRef.click();
             }}
             type="button"
           >
@@ -203,7 +203,7 @@ export default function Room() {
       fp = flatpickr(inputRef, {
         dateFormat: 'Y-m-d',
         defaultDate: date() || undefined,
-        onChange: (_, dateStr) => setDate(dateStr),
+        onChange: (_: any, dateStr: string) => setDate(dateStr),
         allowInput: false,
       });
     }

@@ -20,6 +20,9 @@ importers:
       ag-grid-solid:
         specifier: ^31.1.1
         version: 31.1.1(solid-js@1.9.7)
+      flatpickr:
+        specifier: ^4.6.13
+        version: 4.6.13
       flowbite:
         specifier: ^1.6.5
         version: 1.8.1
@@ -33,6 +36,9 @@ importers:
         specifier: ^1.9.7
         version: 1.9.7
     devDependencies:
+      '@types/flatpickr':
+        specifier: ^3.1.4
+        version: 3.1.4
       autoprefixer:
         specifier: ^10.4.21
         version: 10.4.21(postcss@8.5.6)
@@ -571,6 +577,10 @@ packages:
 
   '@types/estree@1.0.6':
     resolution: {integrity: sha512-AYnb1nQyY49te+VRAVgmzfcgjYS91mY5P0TKUDCLEM+gNnA+3T6rWITXRLYCpahpqSQbN5cE+gHpnPyXjHWxcw==}
+
+  '@types/flatpickr@3.1.4':
+    resolution: {integrity: sha512-czk8lydTB2qzWBqI6gproY594pg+iEfpHQyrvnyMnMKxvD+2qbrs1g2F8KiWZK173jQMw2C7O9lFjiKeBNub+A==}
+    deprecated: This is a stub types definition. flatpickr provides its own type definitions, so you do not need this installed.
 
   '@types/geojson@7946.0.16':
     resolution: {integrity: sha512-6C8nqWur3j98U6+lXDfTUWIfgvZU+EumvpHKcYjujKH7woYyLj2sUmff0tRhrqM7BohUw7Pz3ZB1jj2gW9Fvmg==}
@@ -2181,6 +2191,10 @@ snapshots:
       '@types/d3-zoom': 3.0.8
 
   '@types/estree@1.0.6': {}
+
+  '@types/flatpickr@3.1.4':
+    dependencies:
+      flatpickr: 4.6.13
 
   '@types/geojson@7946.0.16': {}
 

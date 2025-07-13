@@ -7,14 +7,13 @@ export default function RoomOwner() {
   const navigate = useNavigate();
   const [date, setDate] = createSignal('');
   let inputRef: HTMLInputElement | undefined;
-  let fp: flatpickr.Instance | undefined;
 
   onMount(() => {
     if (inputRef) {
-      fp = flatpickr(inputRef, {
+      flatpickr(inputRef, {
         dateFormat: 'Y-m-d',
         defaultDate: date() || undefined,
-        onChange: (_, dateStr) => setDate(dateStr),
+        onChange: (_: any, dateStr: string) => setDate(dateStr),
         allowInput: false,
       });
     }

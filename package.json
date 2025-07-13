@@ -13,12 +13,14 @@
     "@solidjs/router": "^0.15.3",
     "ag-grid-community": "^34.0.0",
     "ag-grid-solid": "^31.1.1",
+    "flatpickr": "^4.6.13",
     "flowbite": "^1.6.5",
     "flowbite-solid": "^0.0.6",
     "solid-icons": "^1.1.0",
     "solid-js": "^1.9.7"
   },
   "devDependencies": {
+    "@types/flatpickr": "^3.1.4",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",

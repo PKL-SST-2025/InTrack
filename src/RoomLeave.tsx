@@ -1,8 +1,7 @@
-import { createSignal } from 'solid-js';
 import { useNavigate, A } from '@solidjs/router';
 
 export default function RoomLeave() {
-  const [showConfirm, setShowConfirm] = createSignal(true); // always show confirm for leave
+  // Removed unused showConfirm and setShowConfirm 
   const navigate = useNavigate();
 
   function handleLeave() {
