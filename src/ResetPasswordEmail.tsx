@@ -1,6 +1,7 @@
 import { createSignal } from 'solid-js';
 import { useNavigate, A } from '@solidjs/router';
 import { AiOutlineMail } from 'solid-icons/ai';
+import logo from './assets/logo.png';
 
 const ResetPasswordEmail = () => {
   const navigate = useNavigate();
@@ -13,8 +14,20 @@ const ResetPasswordEmail = () => {
   };
 
   return (
-    <div class="flex items-center justify-center h-screen w-screen bg-white px-4">
-      <div class="w-full max-w-md bg-white rounded-[2rem] shadow-[0_0_40px_rgba(0,0,0,0.1)] px-8 py-10 flex flex-col items-center">
+    <div class="flex h-screen w-screen bg-white overflow-hidden">
+      {/* Logo on the left */}
+      <div class="hidden md:flex items-center justify-center w-1/3 px-12">
+        <A href="/" class="block">
+          <img 
+            src={logo}
+            alt="InTrack Logo" 
+            class="max-w-full h-auto max-h-24"
+          />
+        </A>
+      </div>
+      {/* Form container centered in remaining space */}
+      <div class="flex-1 flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white rounded-[2rem] shadow-[0_0_40px_rgba(0,0,0,0.1)] p-8 flex flex-col items-center">
         <h1 class="text-4xl font-bold mb-10 text-center text-black">Reset Password</h1>
         <form class="w-full flex flex-col gap-8" onSubmit={handleSubmit}>
           <div class="flex flex-col gap-2">
@@ -43,6 +56,7 @@ const ResetPasswordEmail = () => {
         <div class="mt-8 text-center text-base text-black">
           Remembered your password?{' '}
           <A href="/Login" class="text-yellow-500 font-medium hover:underline glow-orange-hover">Login</A>
+        </div>
         </div>
       </div>
     </div>

@@ -19,16 +19,20 @@ const Register = () => {
   const togglePassword = () => setShowPassword((v) => !v);
 
   return (
-    <div class="flex flex-col md:flex-row items-center justify-center h-screen w-screen bg-white px-4">
-      <div class="flex flex-1 w-full max-w-screen-xl mx-auto items-center justify-center gap-32">
-        {/* Logo Section */}
-        <div class="hidden md:flex md:w-5/12 items-center justify-end pr-12 md:pl-24">
-          <A href="/">
-            <img src={logo} alt="InTrack Logo" class="max-w-xs w-72 h-auto cursor-pointer" />
-          </A>
-        </div>
-        {/* Form Section */}
-        <div class="w-full md:w-5/12 max-w-md bg-white rounded-[2rem] shadow-[0_0_40px_rgba(0,0,0,0.1)] px-8 py-10 flex flex-col items-center">
+    <div class="flex h-screen w-screen bg-white overflow-hidden">
+      {/* Logo on the left */}
+      <div class="hidden md:flex items-center justify-center w-1/3 px-12">
+        <A href="/" class="block">
+          <img 
+            src={logo} 
+            alt="InTrack Logo" 
+            class="max-w-full h-auto max-h-24"
+          />
+        </A>
+      </div>
+      {/* Register container centered in remaining space */}
+      <div class="flex-1 flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white rounded-[2rem] shadow-[0_0_40px_rgba(0,0,0,0.1)] p-8 flex flex-col items-center">
           <h1 class="text-4xl font-bold mb-10 text-center text-black">
             Welcome!
           </h1>
