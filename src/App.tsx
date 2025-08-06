@@ -1,35 +1,41 @@
-import { createSignal } from 'solid-js'
-import solidLogo from './assets/solid.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { render } from 'solid-js/web';
+import { Router, Route } from '@solidjs/router';
+import './index.css';
+import Login from './Login';
+import Register from './Register';
+import ResetPasswordEmail from './ResetPasswordEmail';
+import ResetPasswordNew from './ResetPasswordNew';
+import UserSettings from './UserSettings';
+import Dashboard from './Dashboard';
+import Rooms from './Rooms';
+import Navbar from './Navbar';
+import Room from './Room';
+import RoomJoin from './RoomJoin';
+import FillingStation from './FillingStation';
+import RoomLeave from './RoomLeave';
+import Landing from './Landing';
+import RoomOwner from './RoomOwner';
+import RoomCreate from './RoomCreate';
+import RoomEdit from './RoomEdit';
 
-function App() {
-  const [count, setCount] = createSignal(0)
+const root = document.getElementById('root');
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} class="logo" alt="Vite logo" />
-        </a>
-        <a href="https://solidjs.com" target="_blank">
-          <img src={solidLogo} class="logo solid" alt="Solid logo" />
-        </a>
-      </div>
-      <h1>Vite + Solid</h1>
-      <div class="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count()}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p class="read-the-docs">
-        Click on the Vite and Solid logos to learn more
-      </p>
-    </>
-  )
-}
-
-export default App
+render(() => (
+  <Router>
+      <Route path="/" component={Landing} />
+      <Route path="/Login" component={Login} />
+      <Route path="/Register" component={Register} />
+      <Route path="/ResetPasswordEmail" component={ResetPasswordEmail} />
+      <Route path="/ResetPasswordNew" component={ResetPasswordNew} />
+      <Route path="/Dashboard" component={() => <Navbar><Dashboard /></Navbar>} />
+      <Route path="/UserSettings" component={() => <Navbar><UserSettings /></Navbar>} />
+      <Route path="/Rooms" component={() => <Navbar><Rooms /></Navbar>} />
+      <Route path="/Room" component={() => <Navbar><Room /></Navbar>} />
+      <Route path="/RoomJoin" component={() => <Navbar><RoomJoin /></Navbar>} />
+      <Route path="/FillingStation" component={() => <Navbar><FillingStation /></Navbar>} />
+      <Route path="/RoomLeave" component={() => <Navbar><RoomLeave /></Navbar>} />
+      <Route path="/RoomOwner" component={() => <Navbar><RoomOwner /></Navbar>} />
+      <Route path="/RoomCreate" component={() => <Navbar><RoomCreate /></Navbar>} />
+      <Route path="/RoomEdit" component={() => <Navbar><RoomEdit /></Navbar>} />
+  </Router>
+), root!);

@@ -1,28 +1,114 @@
-import { createSignal } from 'solid-js';
+import { createSignal, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 
 const UserSettings = () => {
   const navigate = useNavigate();
-  // Example signals for form fields (replace with real state management as needed)
-  const [fullName, setFullName] = createSignal('Dzul Fikri');
+  const [fullName, setFullName] = createSignal('');
   const [showDeleteModal, setShowDeleteModal] = createSignal(false);
+  const [email, setEmail] = createSignal('');
+  const [phone, setPhone] = createSignal('');
+  const [birthDate, setBirthDate] = createSignal('');
+  const [gender, setGender] = createSignal('');
+  const [notifications, setNotifications] = createSignal('');
+  const [language, setLanguage] = createSignal('');
+  const [theme, setTheme] = createSignal('');
+  const [logoutLoading, setLogoutLoading] = createSignal(false);
+  const [logoutError, setLogoutError] = createSignal('');
+  const [saveLoading, setSaveLoading] = createSignal(false);
+  const [saveError, setSaveError] = createSignal('');
+  const [saveSuccess, setSaveSuccess] = createSignal('');
 
-  const [email, setEmail] = createSignal('dzulbotygy@gmail.com');
-  const [phone, setPhone] = createSignal('+62-858-7602-2223');
-  const [birthDate, setBirthDate] = createSignal('13/12/2007');
-  const [gender, setGender] = createSignal('Male');
-  const [notifications, setNotifications] = createSignal('All');
-  const [language, setLanguage] = createSignal('English');
-  const [theme, setTheme] = createSignal('Light');
+  onMount(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const res = await fetch('http://localhost:8080/profile', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setFullName(data.full_name || '');
+      setEmail(data.email || '');
+      setPhone(data.phone || '');
+      setBirthDate(data.birth_date || '');
+      setGender(data.gender || '');
+      setNotifications(data.notifications || '');
+      setLanguage(data.language || '');
+      setTheme(data.web_theme || '');
+    } catch (e) {
+      // fail silently for now
+    }
+  });
+
+  async function handleLogout() {
+    setLogoutLoading(true);
+    setLogoutError('');
+    try {
+      await fetch('http://localhost:8080/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      localStorage.removeItem('token');
+      navigate('/Login');
+    } catch (err) {
+      setLogoutError('failed to log out');
+    } finally {
+      setLogoutLoading(false);
+    }
+  }
 
   return (
     <div class="flex-1 flex flex-col bg-[#ededed]">
       <div class="p-8 w-full max-w-screen-2xl mx-auto">
         <h1 class="text-3xl font-bold mb-6 text-black text-left">Preferences</h1>
+        {saveError() && <div class="text-red-500 mb-2">{saveError()}</div>}
+        {saveSuccess() && <div class="text-green-600 mb-2">{saveSuccess()}</div>}
         <div class="bg-white rounded-2xl p-6 shadow-[0_0_16px_0_rgba(0,0,0,0.10)] relative">
           <div class="absolute right-6 top-6 flex gap-4 z-0">
             <button class="rounded-lg border px-4 py-2 font-medium bg-white text-black hover:bg-gray-100 shadow-sm">Discard</button>
-            <button class="rounded-lg border px-4 py-2 font-medium bg-orange-500 text-white hover:bg-orange-600 shadow-sm">Save Changes</button>
+            <button
+              class="rounded-lg border px-4 py-2 font-medium bg-orange-500 text-white hover:bg-orange-600 shadow-sm"
+              onClick={async (e) => {
+                e.preventDefault();
+                setSaveLoading(true);
+                setSaveError("");
+                setSaveSuccess("");
+                try {
+                  const token = localStorage.getItem('token');
+                  const res = await fetch('http://localhost:8080/update-profile', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                      full_name: fullName() || null,
+                      email: email() || null,
+                      phone: phone() || null,
+                      birth_date: birthDate() || null,
+                      gender: gender() || null,
+                      notifications: notifications() || null,
+                      language: language() || null,
+                      web_theme: theme() || null,
+                    })
+                  });
+                  if (res.ok) {
+                    setSaveSuccess('preferences updated!');
+                  } else {
+                    const err = await res.text();
+                    setSaveError(err || 'failed to update preferences');
+                  }
+                } catch (err) {
+                  setSaveError('failed to update preferences');
+                } finally {
+                  setSaveLoading(false);
+                }
+              }}
+              disabled={saveLoading()}
+            >
+              {saveLoading() ? 'Saving...' : 'Save Changes'}
+            </button>
           </div>
           <div class="flex flex-col sm:flex-row items-center gap-6 mt-2 mb-8">
             <div class="relative">
@@ -163,11 +249,18 @@ const UserSettings = () => {
             >
               Reset Password
             </button>
-            <button 
+            {logoutError() && (
+              <div class="text-red-500 text-center mb-2">{logoutError()}</div>
+            )}
+            <button
               class="px-4 py-2.5 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
-              onClick={() => navigate('/Login')}
+              disabled={logoutLoading()}
+              onClick={async (e) => {
+                e.preventDefault();
+                await handleLogout();
+              }}
             >
-              Log out
+              {logoutLoading() ? 'Logging out...' : 'Log out'}
             </button>
             <button 
               class="px-4 py-2.5 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
