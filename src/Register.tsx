@@ -16,6 +16,12 @@ import logo from './assets/logo.png';
 const Register = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = createSignal(false);
+  const [fullName, setFullName] = createSignal('');
+  const [email, setEmail] = createSignal('');
+  const [phone, setPhone] = createSignal('');
+  const [password, setPassword] = createSignal('');
+  const [error, setError] = createSignal('');
+  const [loading, setLoading] = createSignal(false);
   const togglePassword = () => setShowPassword((v) => !v);
 
   return (
@@ -36,7 +42,33 @@ const Register = () => {
           <h1 class="text-4xl font-bold mb-10 text-center text-black">
             Welcome!
           </h1>
-        <form class="w-full flex flex-col gap-8" onSubmit={e => { e.preventDefault(); navigate('/Dashboard'); }}>
+        <form class="w-full flex flex-col gap-8" onSubmit={async e => {
+  e.preventDefault();
+  setLoading(true);
+  setError('');
+  try {
+    const res = await fetch('http://localhost:8080/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        full_name: fullName(),
+        email: email() || undefined,
+        phone: phone() || undefined,
+        password: password(),
+      }),
+    });
+    if (res.ok) {
+      navigate('/Login');
+    } else {
+      const data = await res.text();
+      setError(data || 'registration failed');
+    }
+  } catch (err) {
+    setError('network error');
+  } finally {
+    setLoading(false);
+  }
+}}>
           {/* Full Name */}
           <div class="flex flex-col gap-2">
             <label for="fullname" class="text-base font-medium text-black">
@@ -50,6 +82,8 @@ const Register = () => {
                 placeholder="Your name"
                 class="flex-1 outline-none bg-transparent text-lg text-black"
                 autocomplete="name"
+                value={fullName()}
+                onInput={e => setFullName(e.currentTarget.value)}
               />
             </div>
           </div>
@@ -67,6 +101,27 @@ const Register = () => {
                 placeholder="you@example.com"
                 class="flex-1 outline-none bg-transparent text-lg text-black"
                 autocomplete="email"
+                value={email()}
+                onInput={e => setEmail(e.currentTarget.value)}
+              />
+            </div>
+          </div>
+
+          {/* Phone */}
+          <div class="flex flex-col gap-2">
+            <label for="phone" class="text-base font-medium text-black">
+              Phone
+            </label>
+            <div class="flex items-center bg-white border border-gray-300 rounded-2xl px-6 py-5 shadow-sm">
+              <HiOutlinePhone class="w-7 h-7 text-gray-400 mr-4" />
+              <input
+                id="phone"
+                type="tel"
+                placeholder="123-456-7890"
+                class="flex-1 outline-none bg-transparent text-lg text-black"
+                autocomplete="tel"
+                value={phone()}
+                onInput={e => setPhone(e.currentTarget.value)}
               />
             </div>
           </div>
@@ -84,6 +139,8 @@ const Register = () => {
                 placeholder="••••••••"
                 class="flex-1 outline-none bg-transparent text-lg text-black"
                 autocomplete="new-password"
+                value={password()}
+                onInput={e => setPassword(e.currentTarget.value)}
               />
               <button
                 type="button"
@@ -101,10 +158,16 @@ const Register = () => {
           </div>
 
           {/* Register Button */}
+          {error() && (
+            <div class="text-red-500 text-center mb-2">{error()}</div>
+          )}
+          {loading() && (
+            <div class="text-gray-500 text-center mb-2">registering...</div>
+          )}
           <button
             type="submit"
             class="w-full bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-500 hover:to-orange-500 text-white font-bold py-5 rounded-2xl text-xl shadow-lg transition-all"
-            onClick={() => navigate('/Login')}
+            disabled={loading()}
           >
             Register
           </button>
