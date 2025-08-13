@@ -1,5 +1,5 @@
 import { render } from 'solid-js/web';
-import { Router, Route } from '@solidjs/router';
+import { Router, Route, Navigate } from '@solidjs/router';
 import './index.css';
 import Login from './Login';
 import Register from './Register';
@@ -20,22 +20,28 @@ import RoomEdit from './RoomEdit';
 
 const root = document.getElementById('root');
 
+type GuardProps = { children: any };
+const isAuthed = () => Boolean(localStorage.getItem('token'));
+const Protected = (props: GuardProps) => (isAuthed() ? props.children : <Navigate href="/Login" />);
+const PublicOnly = (props: GuardProps) => (isAuthed() ? <Navigate href="/Dashboard" /> : props.children);
+const Root = () => (isAuthed() ? <Navigate href="/Dashboard" /> : <Landing />);
+
 render(() => (
   <Router>
-      <Route path="/" component={Landing} />
-      <Route path="/Login" component={Login} />
-      <Route path="/Register" component={Register} />
-      <Route path="/ResetPasswordEmail" component={ResetPasswordEmail} />
-      <Route path="/ResetPasswordNew" component={ResetPasswordNew} />
-      <Route path="/Dashboard" component={() => <Navbar><Dashboard /></Navbar>} />
-      <Route path="/UserSettings" component={() => <Navbar><UserSettings /></Navbar>} />
-      <Route path="/Rooms" component={() => <Navbar><Rooms /></Navbar>} />
-      <Route path="/Room" component={() => <Navbar><Room /></Navbar>} />
-      <Route path="/RoomJoin" component={() => <Navbar><RoomJoin /></Navbar>} />
-      <Route path="/FillingStation" component={() => <Navbar><FillingStation /></Navbar>} />
-      <Route path="/RoomLeave" component={() => <Navbar><RoomLeave /></Navbar>} />
-      <Route path="/RoomOwner" component={() => <Navbar><RoomOwner /></Navbar>} />
-      <Route path="/RoomCreate" component={() => <Navbar><RoomCreate /></Navbar>} />
-      <Route path="/RoomEdit" component={() => <Navbar><RoomEdit /></Navbar>} />
+      <Route path="/" component={Root} />
+      <Route path="/Login" component={() => <PublicOnly><Login /></PublicOnly>} />
+      <Route path="/Register" component={() => <PublicOnly><Register /></PublicOnly>} />
+      <Route path="/ResetPasswordEmail" component={() => <PublicOnly><ResetPasswordEmail /></PublicOnly>} />
+      <Route path="/ResetPasswordNew" component={() => <PublicOnly><ResetPasswordNew /></PublicOnly>} />
+      <Route path="/Dashboard" component={() => <Protected><Navbar><Dashboard /></Navbar></Protected>} />
+      <Route path="/UserSettings" component={() => <Protected><Navbar><UserSettings /></Navbar></Protected>} />
+      <Route path="/Rooms" component={() => <Protected><Navbar><Rooms /></Navbar></Protected>} />
+      <Route path="/Room" component={() => <Protected><Navbar><Room /></Navbar></Protected>} />
+      <Route path="/RoomJoin" component={() => <Protected><Navbar><RoomJoin /></Navbar></Protected>} />
+      <Route path="/FillingStation" component={() => <Protected><Navbar><FillingStation /></Navbar></Protected>} />
+      <Route path="/RoomLeave" component={() => <Protected><Navbar><RoomLeave /></Navbar></Protected>} />
+      <Route path="/RoomOwner" component={() => <Protected><Navbar><RoomOwner /></Navbar></Protected>} />
+      <Route path="/RoomCreate" component={() => <Protected><Navbar><RoomCreate /></Navbar></Protected>} />
+      <Route path="/RoomEdit" component={() => <Protected><Navbar><RoomEdit /></Navbar></Protected>} />
   </Router>
 ), root!);
