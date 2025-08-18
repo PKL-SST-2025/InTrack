@@ -13,6 +13,7 @@ interface Room {
 
 export default function Rooms() {
   const [ownerRooms, setOwnerRooms] = createSignal<Room[]>([]);
+  const [joinedRooms, setJoinedRooms] = createSignal<Room[]>([]);
 
   onMount(async () => {
     const token = localStorage.getItem('token');
@@ -21,18 +22,29 @@ export default function Rooms() {
     }
 
     try {
-      const response = await fetch(`${BACKEND_URL}/rooms`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const [ownedRes, joinedRes] = await Promise.all([
+        fetch(`${BACKEND_URL}/rooms`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${BACKEND_URL}/rooms/joined`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
 
-      if (response.ok) {
-        const data = await response.json();
+      if (ownedRes.ok) {
+        const data = await ownedRes.json();
         setOwnerRooms(data);
       } else {
-        const errText = await response.text();
-        console.error('Failed to fetch rooms:', response.status, errText);
+        const errText = await ownedRes.text();
+        console.error('Failed to fetch owned rooms:', ownedRes.status, errText);
+      }
+
+      if (joinedRes.ok) {
+        const data = await joinedRes.json();
+        setJoinedRooms(data);
+      } else {
+        const errText = await joinedRes.text();
+        console.error('Failed to fetch joined rooms:', joinedRes.status, errText);
       }
     } catch (error) {
       console.error('Error fetching rooms:', error);
@@ -60,8 +72,32 @@ export default function Rooms() {
           
           <div class="bg-white rounded-2xl p-6 shadow-[0_0_16px_0_rgba(0,0,0,0.10)] w-full">
             <div class="grid gap-4 mb-6 w-full">
-              {/* Member rooms can be added here in the future */}
-              <p class="text-gray-500">You haven't joined any rooms yet.</p>
+              <For each={joinedRooms()} fallback={<p class='text-gray-500'>You haven't joined any rooms yet.</p>}>{(room) => (
+                <div class="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl border border-gray-200 w-full">
+                  <img 
+                    src={room.profile_picture
+                      ? (room.profile_picture.startsWith('http')
+                          ? room.profile_picture
+                          : `${BACKEND_URL}${room.profile_picture.startsWith('/uploads') ? '' : '/uploads/'}${room.profile_picture}`)
+                      : 'https://via.placeholder.com/150'}
+                    alt={room.name}
+                    class="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-white shadow" 
+                  />
+                  <div class="flex-1 min-w-0 text-center sm:text-left">
+                    <h3 class="text-lg font-semibold text-black truncate">{room.name}</h3>
+                    <p class="text-sm text-gray-600">{room.quote || 'No quote provided'}</p>
+                    <p class="text-xs text-gray-500">Owner: {room.owner_name}</p>
+                  </div>
+                  <div class="flex gap-2 w-full sm:w-auto mt-3 sm:mt-0">
+                    <a 
+                      href={`/Room/${room.id}`}
+                      class="flex-1 px-4 py-2 text-sm font-medium text-white bg-orange-500 border border-orange-500 rounded-lg hover:bg-orange-600 text-center"
+                    >
+                      Open
+                    </a>
+                  </div>
+                </div>
+              )}</For>
             </div>
             
             <div class="text-center pt-4 border-t border-gray-200 mt-6">
