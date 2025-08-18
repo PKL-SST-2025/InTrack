@@ -1,4 +1,4 @@
-import { For, createSignal, onMount } from 'solid-js';
+import { For, Show, createSignal, onMount } from 'solid-js';
 import { A } from '@solidjs/router';
 import { BACKEND_URL } from './config';
 
@@ -14,10 +14,18 @@ interface Room {
 export default function Rooms() {
   const [ownerRooms, setOwnerRooms] = createSignal<Room[]>([]);
   const [joinedRooms, setJoinedRooms] = createSignal<Room[]>([]);
+  const [loadingOwned, setLoadingOwned] = createSignal(true);
+  const [loadingJoined, setLoadingJoined] = createSignal(true);
+  const [errorOwned, setErrorOwned] = createSignal<string | null>(null);
+  const [errorJoined, setErrorJoined] = createSignal<string | null>(null);
 
   onMount(async () => {
     const token = localStorage.getItem('token');
     if (!token) {
+      setLoadingOwned(false);
+      setLoadingJoined(false);
+      setErrorOwned('not authenticated');
+      setErrorJoined('not authenticated');
       return;
     }
 
@@ -34,20 +42,29 @@ export default function Rooms() {
       if (ownedRes.ok) {
         const data = await ownedRes.json();
         setOwnerRooms(data);
+        setErrorOwned(null);
       } else {
         const errText = await ownedRes.text();
+        setErrorOwned(`${ownedRes.status} ${errText}`);
         console.error('Failed to fetch owned rooms:', ownedRes.status, errText);
       }
 
       if (joinedRes.ok) {
         const data = await joinedRes.json();
         setJoinedRooms(data);
+        setErrorJoined(null);
       } else {
         const errText = await joinedRes.text();
+        setErrorJoined(`${joinedRes.status} ${errText}`);
         console.error('Failed to fetch joined rooms:', joinedRes.status, errText);
       }
     } catch (error) {
       console.error('Error fetching rooms:', error);
+      setErrorOwned('network error');
+      setErrorJoined('network error');
+    } finally {
+      setLoadingOwned(false);
+      setLoadingJoined(false);
     }
   });
   return (
@@ -72,7 +89,9 @@ export default function Rooms() {
           
           <div class="bg-white rounded-2xl p-6 shadow-[0_0_16px_0_rgba(0,0,0,0.10)] w-full">
             <div class="grid gap-4 mb-6 w-full">
-              <For each={joinedRooms()} fallback={<p class='text-gray-500'>You haven't joined any rooms yet.</p>}>{(room) => (
+              <Show when={!loadingJoined()} fallback={<p class='text-gray-500'>loading joined rooms...</p>}>
+                <Show when={!errorJoined()} fallback={<p class='text-red-600'>failed to load joined rooms: {errorJoined()}</p>}>
+                  <For each={joinedRooms()} fallback={<p class='text-gray-500'>you haven't joined any rooms yet.</p>}>{(room) => (
                 <div class="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl border border-gray-200 w-full">
                   <img 
                     src={room.profile_picture
@@ -97,7 +116,9 @@ export default function Rooms() {
                     </a>
                   </div>
                 </div>
-              )}</For>
+                  )}</For>
+                </Show>
+              </Show>
             </div>
             
             <div class="text-center pt-4 border-t border-gray-200 mt-6">
@@ -131,7 +152,9 @@ export default function Rooms() {
           
           <div class="bg-white rounded-2xl p-6 shadow-[0_0_16px_0_rgba(0,0,0,0.10)] w-full">
             <div class="grid gap-4 mb-6 w-full">
-              <For each={ownerRooms()} fallback={<p class='text-gray-500'>You don't own any rooms yet.</p>}>{(room) => (
+              <Show when={!loadingOwned()} fallback={<p class='text-gray-500'>loading your rooms...</p>}>
+                <Show when={!errorOwned()} fallback={<p class='text-red-600'>failed to load your rooms: {errorOwned()}</p>}>
+                  <For each={ownerRooms()} fallback={<p class='text-gray-500'>you don't own any rooms yet.</p>}>{(room) => (
                 <div class="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl border border-gray-200 w-full">
                   <img 
                     src={room.profile_picture
@@ -148,14 +171,16 @@ export default function Rooms() {
                   </div>
                   <div class="flex gap-2 w-full sm:w-auto mt-3 sm:mt-0">
                     <a 
-                      href={`/RoomOwner/${room.id}`}
+                      href={`/Room/${room.id}?manage=1`}
                       class="flex-1 px-4 py-2 text-sm font-medium text-white bg-orange-500 border border-orange-500 rounded-lg hover:bg-orange-600 text-center"
                     >
                       Manage
                     </a>
                   </div>
                 </div>
-              )}</For>
+                  )}</For>
+                </Show>
+              </Show>
             </div>
             
             <div class="text-center pt-4 border-t border-gray-200 mt-6">

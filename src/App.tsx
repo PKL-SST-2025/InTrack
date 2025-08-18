@@ -31,6 +31,7 @@ render(() => (
       <Route path="/UserSettings" component={() => <Navbar><UserSettings /></Navbar>} />
       <Route path="/Rooms" component={() => <Navbar><Rooms /></Navbar>} />
       <Route path="/Room" component={() => <Navbar><Room /></Navbar>} />
+      <Route path="/Room/:id" component={() => <Navbar><Room /></Navbar>} />
       <Route path="/RoomJoin" component={() => <Navbar><RoomJoin /></Navbar>} />
       <Route path="/FillingStation" component={() => <Navbar><FillingStation /></Navbar>} />
       <Route path="/RoomLeave" component={() => <Navbar><RoomLeave /></Navbar>} />
