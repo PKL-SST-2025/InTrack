@@ -15,6 +15,10 @@ import logo from './assets/logo.png';
 const Login = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = createSignal(false);
+  const [email, setEmail] = createSignal('');
+  const [password, setPassword] = createSignal('');
+  const [error, setError] = createSignal('');
+  const [loading, setLoading] = createSignal(false);
   const togglePassword = () => setShowPassword((v) => !v);
 
   return (
@@ -36,11 +40,33 @@ const Login = () => {
         <h1 class="text-4xl font-bold mb-10 text-center text-black">
           Hello again!
         </h1>
-        <form 
-          class="w-full flex flex-col gap-8" 
-          onSubmit={e => { 
-            e.preventDefault(); 
-            navigate('/Dashboard'); 
+        <form
+          class="w-full flex flex-col gap-8"
+          onSubmit={async e => {
+            e.preventDefault();
+            setLoading(true);
+            setError('');
+            try {
+              const res = await fetch('http://localhost:8080/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email: email(),
+                  password: password(),
+                }),
+              });
+              const data = await res.json();
+              if (res.ok) {
+                localStorage.setItem('token', data.token);
+                navigate('/Dashboard');
+              } else {
+                setError(data.error || 'login failed');
+              }
+            } catch (err) {
+              setError('network error');
+            } finally {
+              setLoading(false);
+            }
           }}
         >
           {/* email */}
@@ -56,6 +82,8 @@ const Login = () => {
                 placeholder="you@example.com"
                 class="flex-1 outline-none bg-transparent text-lg text-black"
                 autocomplete="email"
+                value={email()}
+                onInput={e => setEmail(e.currentTarget.value)}
               />
             </div>
           </div>
@@ -73,6 +101,8 @@ const Login = () => {
                 placeholder="••••••••"
                 class="flex-1 outline-none bg-transparent text-lg text-black"
                 autocomplete="current-password"
+                value={password()}
+                onInput={e => setPassword(e.currentTarget.value)}
               />
               <button
                 type="button"
@@ -98,10 +128,16 @@ const Login = () => {
           </div>
 
           {/* login button */}
+          {error() && (
+            <div class="text-red-500 text-center mb-2">{error()}</div>
+          )}
+          {loading() && (
+            <div class="text-gray-500 text-center mb-2">logging in...</div>
+          )}
           <button
             type="submit"
             class="w-full bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-500 hover:to-orange-500 text-white font-bold py-5 rounded-2xl text-xl shadow-lg transition-all"
-            onClick={() => navigate('/Dashboard')}
+            disabled={loading()}
           >
             Login
           </button>

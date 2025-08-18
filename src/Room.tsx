@@ -2,7 +2,27 @@ import { createSignal, onMount, Show } from 'solid-js';
 import flatpickr from 'flatpickr';
 import './flatpickr.css';
 import { now } from '@amcharts/amcharts5/.internal/core/util/Time';
-import { useNavigate } from '@solidjs/router';
+import { useNavigate, useParams, useSearchParams } from '@solidjs/router';
+import { BACKEND_URL } from './config';
+
+interface RoomField {
+  id: number;
+  label: string;
+  field_type: string;
+  ord: number;
+}
+
+interface RoomDetails {
+  id: string;
+  name: string;
+  quote: string | null;
+  profile_picture: string | null;
+  owner_id: string;
+  owner_name: string;
+  owner_pfp: string | null;
+  is_owner: boolean;
+  fields: RoomField[];
+}
 
 function getOrdinal(n: number) {
   if (n > 3 && n < 21) return 'th';
@@ -186,10 +206,18 @@ function FillingForm(props: { dateLabel: string, onCancel: () => void, onSubmit:
 
 export default function Room() {
   const navigate = useNavigate();
+  const params = useParams();
+  const [searchParams] = useSearchParams();
   const [date, setDate] = createSignal('');
   const [showModal, setShowModal] = createSignal(false);
   const [showFilledPopup, setShowFilledPopup] = createSignal(false);
   const [showFillingForm, setShowFillingForm] = createSignal(false);
+  const [room, setRoom] = createSignal<RoomDetails | null>(null);
+  const [loading, setLoading] = createSignal(false);
+  const [error, setError] = createSignal<string | null>(null);
+  const manageRequested = () => searchParams.manage === '1';
+  const isOwner = () => !!room()?.is_owner;
+  const manageMode = () => isOwner() && manageRequested();
   let inputRef: HTMLInputElement | undefined;
   let fp: flatpickr.Instance | undefined;
 
@@ -198,7 +226,36 @@ export default function Room() {
     // No-op: handled inside FillingForm via local state reset
   }
 
-  onMount(() => {
+  onMount(async () => {
+    // fetch room details if id present
+    const id = params.id;
+    if (id) {
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem('token') || '';
+      try {
+        const res = await fetch(`${BACKEND_URL}/rooms/${id}`, {
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+        if (res.ok) {
+          const data = (await res.json()) as RoomDetails;
+          setRoom(data);
+        } else {
+          const t = await res.text();
+          console.error('failed to load room:', res.status, t);
+          if (res.status === 401) setError('you are not authorized. please login again.');
+          else if (res.status === 404) setError('room not found.');
+          else setError('failed to load room.');
+        }
+      } catch (e) {
+        console.error('error loading room:', e);
+        setError('network error while loading room.');
+      } finally {
+        setLoading(false);
+      }
+    }
     if (inputRef) {
       fp = flatpickr(inputRef, {
         dateFormat: 'Y-m-d',
@@ -210,6 +267,13 @@ export default function Room() {
   });
   return (
     <div class="min-h-screen bg-[#ededed] p-8 w-full max-w-screen-2xl mx-auto">
+      {/* loading and error states */}
+      <Show when={loading()}>
+        <div class="mb-4 p-3 rounded-lg bg-white border border-gray-200 text-black">loading room...</div>
+      </Show>
+      <Show when={error()}>
+        <div class="mb-4 p-3 rounded-lg bg-red-100 border border-red-300 text-red-800">{error()}</div>
+      </Show>
       {/* Breadcrumb Directory */}
       <div class="flex items-center gap-2 mb-8">
         <a href="/Rooms" class="text-2xl sm:text-3xl font-bold text-black hover:underline cursor-pointer">Rooms</a>
@@ -221,30 +285,45 @@ export default function Room() {
   <div class="bg-white rounded-xl shadow p-5 flex items-center justify-between">
     <div class="flex items-center gap-4">
       <img
-        src="https://languagecenter.unj.ac.id/wp-content/uploads/2023/10/bahasa-indonesia-400x400.png"
+        src={(room()?.profile_picture
+          ? (room()!.profile_picture!.startsWith('http')
+              ? room()!.profile_picture!
+              : `${BACKEND_URL}${room()!.profile_picture!.startsWith('/uploads') ? '' : '/uploads/'}${room()!.profile_picture}`)
+          : 'https://via.placeholder.com/150')}
         alt="Room Logo"
         class="w-32 h-32 rounded-full object-cover border"
       />
       <div class="flex flex-col">
-  <span class="text-3xl text-black font-semibold">Kelas Bahasa Indonesia XI6</span>
-  <span class="text-sm text-gray-500 mt-1">"Pelajar giat adalah pelajar yang sukses."</span>
-</div>
+        <span class="text-3xl text-black font-semibold">{room()?.name || 'room'}</span>
+        <span class="text-sm text-gray-500 mt-1">{room()?.quote || ''}</span>
+      </div>
     </div>
-    <button class="bg-white border border-gray-300 rounded-lg px-5 py-2 text-black shadow hover:bg-gray-100" onClick={() => navigate('/RoomLeave')}>Leave</button>
+    <div class="flex items-center gap-2">
+      {isOwner() && (
+        <a href={`?manage=${manageMode() ? '0' : '1'}`} class="bg-white border border-gray-300 rounded-lg px-5 py-2 text-black shadow hover:bg-gray-100">
+          {manageMode() ? 'view' : 'manage'}
+        </a>
+      )}
+      <button class="bg-white border border-gray-300 rounded-lg px-5 py-2 text-black shadow hover:bg-gray-100" onClick={() => navigate('/RoomLeave')}>Leave</button>
+    </div>
   </div>
 </div>
 
       <div class="flex gap-8">
   {/* Owner Section */}
   <div class="flex flex-col items-center min-w-[220px] max-w-[220px] w-full">
-    <div class="text-3xl font-bold text-black mb-6 w-full text-left">Owner</div>
+    <div class="text-3xl font-bold text-black mb-6 w-full text-left">owner</div>
     <div class="bg-white rounded-2xl shadow p-6 flex flex-col items-center w-full">
       <img
-        src="https://media.licdn.com/dms/image/v2/C5103AQF2pD3z1-Lg-w/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1573455349677?e=2147483647&v=beta&t=a3vPNTYdnirYDWN936Xuoc9kS6K36m62RGP7BYnDKEU"
+        src={(room()?.owner_pfp
+          ? (room()!.owner_pfp!.startsWith('http')
+              ? room()!.owner_pfp!
+              : `${BACKEND_URL}${room()!.owner_pfp!.startsWith('/uploads') ? '' : '/uploads/'}${room()!.owner_pfp}`)
+          : 'https://api.dicebear.com/7.x/bottts/svg?seed=owner')}
         alt="Owner"
         class="w-32 h-32 rounded-full object-cover border mb-4"
       />
-      <div class="text-lg font-bold text-black text-center">Yulita Ayu Rengganis</div>
+      <div class="text-lg font-bold text-black text-center">{room()?.owner_name || 'owner'}</div>
     </div>
   </div>
 
