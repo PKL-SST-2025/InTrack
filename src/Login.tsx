@@ -11,6 +11,7 @@ import {
   HiOutlinePhone,
 } from 'solid-icons/hi';
 import logo from './assets/logo.png';
+import { BACKEND_URL } from './config';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -47,7 +48,7 @@ const Login = () => {
             setLoading(true);
             setError('');
             try {
-              const res = await fetch('http://localhost:8080/login', {
+              const res = await fetch(`${BACKEND_URL}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

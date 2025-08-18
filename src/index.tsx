@@ -37,6 +37,7 @@ render(() => (
       <Route path="/UserSettings" component={() => <Protected><Navbar><UserSettings /></Navbar></Protected>} />
       <Route path="/Rooms" component={() => <Protected><Navbar><Rooms /></Navbar></Protected>} />
       <Route path="/Room" component={() => <Protected><Navbar><Room /></Navbar></Protected>} />
+      <Route path="/Room/:id" component={() => <Protected><Navbar><Room /></Navbar></Protected>} />
       <Route path="/RoomJoin" component={() => <Protected><Navbar><RoomJoin /></Navbar></Protected>} />
       <Route path="/FillingStation" component={() => <Protected><Navbar><FillingStation /></Navbar></Protected>} />
       <Route path="/RoomLeave" component={() => <Protected><Navbar><RoomLeave /></Navbar></Protected>} />
