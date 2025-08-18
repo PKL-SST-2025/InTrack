@@ -1,39 +1,43 @@
-import { For } from 'solid-js';
+import { For, createSignal, onMount } from 'solid-js';
 import { A } from '@solidjs/router';
+import { BACKEND_URL } from './config';
 
-const memberRooms = [
-  {
-    name: 'Kelas Bahasa Indonesia XI6',
-    owner: 'Yulita Ayu Rengganis',
-    missing: 1,
-    img: 'https://languagecenter.unj.ac.id/wp-content/uploads/2023/10/bahasa-indonesia-400x400.png',
-    ownerUrl: undefined,
-  },
-  {
-    name: 'Magang Smartelco',
-    owner: 'Pak Alvin',
-    missing: 0,
-    img: 'https://media.licdn.com/dms/image/v2/C510BAQGOZpyheCmuTA/company-logo_200_200/company-logo_200_200/0/1630635394279?e=2147483647&v=beta&t=YFDNcwMDvA-_9av17_oT2c5ADNJMowY1IlbxNjrzwjY',
-    ownerUrl: undefined,
-  },
-  {
-    name: 'Mabar roblox',
-    owner: 'zaffa anjay mabar',
-    missing: 0,
-    img: 'https://preview.redd.it/two-cursed-roblox-character-i-made-v0-gqvcffay2e0d1.jpg?width=640&crop=smart&auto=webp&s=7f537ccb7deffd01879f64a99b2895cd86692917',
-    ownerUrl: undefined,
-  },
-];
-
-const ownerRooms = [
-  {
-    name: 'MD fanart submission',
-    members: 2,
-    img: 'https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcSQNkZ5z-20nouxxzVssKbPdA26QR0ll9hFmqGyBtQ-bcgRlek2',
-  },
-];
+interface Room {
+  id: string;
+  name: string;
+  quote: string | null;
+  profile_picture: string | null;
+  owner_name: string;
+  owner_pfp: string | null;
+}
 
 export default function Rooms() {
+  const [ownerRooms, setOwnerRooms] = createSignal<Room[]>([]);
+
+  onMount(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/rooms`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setOwnerRooms(data);
+      } else {
+        const errText = await response.text();
+        console.error('Failed to fetch rooms:', response.status, errText);
+      }
+    } catch (error) {
+      console.error('Error fetching rooms:', error);
+    }
+  });
   return (
     <div class="flex-1 flex flex-col bg-[#ededed]">
       <div class="p-8 w-full max-w-screen-2xl mx-auto">
@@ -56,30 +60,8 @@ export default function Rooms() {
           
           <div class="bg-white rounded-2xl p-6 shadow-[0_0_16px_0_rgba(0,0,0,0.10)] w-full">
             <div class="grid gap-4 mb-6 w-full">
-              <For each={memberRooms}>{room => (
-                <div class="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl border border-gray-200 w-full">
-                  <img src={room.img} alt={room.name} class="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-white shadow" />
-                  <div class="flex-1 min-w-0 text-center sm:text-left">
-                    <h3 class="text-lg font-semibold text-black truncate">{room.name}</h3>
-                    <p class="text-sm text-gray-600">
-                      Owner: {room.ownerUrl ? (
-                        <a href={room.ownerUrl} class="text-blue-600 hover:underline" target="_blank">{room.owner}</a>
-                      ) : (
-                        <span>{room.owner}</span>
-                      )}
-                    </p>
-                    <p class="text-sm text-gray-600">Missing attendance: <span class="font-medium">{room.missing}</span></p>
-                  </div>
-                  <div class="flex gap-2 w-full sm:w-auto mt-3 sm:mt-0">
-                    <button class="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-                      Leave
-                    </button>
-                    <a href="/Room" class="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-white bg-orange-500 border border-orange-500 rounded-lg hover:bg-orange-600 text-center">
-                      Open
-                    </a>
-                  </div>
-                </div>
-              )}</For>
+              {/* Member rooms can be added here in the future */}
+              <p class="text-gray-500">You haven't joined any rooms yet.</p>
             </div>
             
             <div class="text-center pt-4 border-t border-gray-200 mt-6">
@@ -113,16 +95,24 @@ export default function Rooms() {
           
           <div class="bg-white rounded-2xl p-6 shadow-[0_0_16px_0_rgba(0,0,0,0.10)] w-full">
             <div class="grid gap-4 mb-6 w-full">
-              <For each={ownerRooms}>{room => (
+              <For each={ownerRooms()} fallback={<p class='text-gray-500'>You don't own any rooms yet.</p>}>{(room) => (
                 <div class="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl border border-gray-200 w-full">
-                  <img src={room.img} alt={room.name} class="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-white shadow" />
+                  <img 
+                    src={room.profile_picture
+                      ? (room.profile_picture.startsWith('http')
+                          ? room.profile_picture
+                          : `${BACKEND_URL}${room.profile_picture.startsWith('/uploads') ? '' : '/uploads/'}${room.profile_picture}`)
+                      : 'https://via.placeholder.com/150'}
+                    alt={room.name}
+                    class="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-white shadow" 
+                  />
                   <div class="flex-1 min-w-0 text-center sm:text-left">
                     <h3 class="text-lg font-semibold text-black truncate">{room.name}</h3>
-                    <p class="text-sm text-gray-600">Members: <span class="font-medium">{room.members}</span></p>
+                    <p class="text-sm text-gray-600">{room.quote || 'No quote provided'}</p>
                   </div>
                   <div class="flex gap-2 w-full sm:w-auto mt-3 sm:mt-0">
                     <a 
-                      href="/RoomOwner" 
+                      href={`/RoomOwner/${room.id}`}
                       class="flex-1 px-4 py-2 text-sm font-medium text-white bg-orange-500 border border-orange-500 rounded-lg hover:bg-orange-600 text-center"
                     >
                       Manage
