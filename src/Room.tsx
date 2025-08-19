@@ -119,38 +119,6 @@ function todayISO(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// compute the current cycle anchor date (the single date considered required for this period)
-// - Daily: today
-// - Weekday (e.g., Monday): the most recent occurrence of that weekday on/before today, but not before join date
-function getCurrentCycleDate(freq?: string | null, joinStr?: string | null): string | null {
-  const tISO = todayISO();
-  const t = new Date(tISO);
-  t.setHours(0,0,0,0);
-  if (!freq || freq.toLowerCase() === 'daily') {
-    // respect join date; if joined after today, no cycle yet
-    if (!isOnOrAfterJoin(tISO, joinStr)) return null;
-    return tISO;
-  }
-  const weekdays = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-  const idx = weekdays.indexOf(freq.toLowerCase());
-  if (idx === -1) {
-    // unknown freq -> treat as daily fallback
-    if (!isOnOrAfterJoin(tISO, joinStr)) return null;
-    return tISO;
-  }
-  // only count if today is the target weekday
-  if (t.getDay() !== idx) return null;
-  if (!isOnOrAfterJoin(tISO, joinStr)) return null;
-  return tISO;
-}
-
-function isCurrentCycleDate(ds?: string, freq?: string | null, joinStr?: string | null): boolean {
-  if (!ds) return false;
-  const cycle = getCurrentCycleDate(freq, joinStr);
-  if (!cycle) return false;
-  return ds === cycle;
-}
-
 function addDaysToISO(dateStr: string, days: number): string {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
