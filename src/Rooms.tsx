@@ -18,6 +18,20 @@ export default function Rooms() {
   const [loadingJoined, setLoadingJoined] = createSignal(true);
   const [errorOwned, setErrorOwned] = createSignal<string | null>(null);
   const [errorJoined, setErrorJoined] = createSignal<string | null>(null);
+  const [joinedQuery, setJoinedQuery] = createSignal('');
+  const [ownedQuery, setOwnedQuery] = createSignal('');
+
+  function matches(room: Room, q: string): boolean {
+    const query = (q || '').trim().toLowerCase();
+    if (!query) return true;
+    const name = (room.name || '').toLowerCase();
+    const quote = (room.quote || '').toLowerCase();
+    const owner = (room.owner_name || '').toLowerCase();
+    return name.includes(query) || quote.includes(query) || owner.includes(query);
+  }
+
+  const filteredJoinedRooms = () => joinedRooms().filter(r => matches(r, joinedQuery()));
+  const filteredOwnerRooms = () => ownerRooms().filter(r => matches(r, ownedQuery()));
 
   onMount(async () => {
     const token = localStorage.getItem('token');
@@ -79,6 +93,8 @@ export default function Rooms() {
                 type="text"
                 placeholder="Search a room..."
                 class="w-full rounded-xl border border-gray-300 pl-4 pr-10 py-2.5 bg-white text-black shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                value={joinedQuery()}
+                onInput={(e) => setJoinedQuery(e.currentTarget.value)}
               />
               <svg class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <circle cx="11" cy="11" r="8" />
@@ -91,7 +107,7 @@ export default function Rooms() {
             <div class="grid gap-4 mb-6 w-full">
               <Show when={!loadingJoined()} fallback={<p class='text-gray-500'>loading joined rooms...</p>}>
                 <Show when={!errorJoined()} fallback={<p class='text-red-600'>failed to load joined rooms: {errorJoined()}</p>}>
-                  <For each={joinedRooms()} fallback={<p class='text-gray-500'>you haven't joined any rooms yet.</p>}>{(room) => (
+                  <For each={filteredJoinedRooms()} fallback={<p class='text-gray-500'>you haven't joined any rooms yet.</p>}>{(room) => (
                 <div class="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl border border-gray-200 w-full">
                   <img 
                     src={room.profile_picture
@@ -142,6 +158,8 @@ export default function Rooms() {
                 type="text"
                 placeholder="Search your room..."
                 class="w-full rounded-xl border border-gray-300 pl-4 pr-10 py-2.5 bg-white text-black shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                value={ownedQuery()}
+                onInput={(e) => setOwnedQuery(e.currentTarget.value)}
               />
               <svg class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <circle cx="11" cy="11" r="8" />
@@ -154,7 +172,7 @@ export default function Rooms() {
             <div class="grid gap-4 mb-6 w-full">
               <Show when={!loadingOwned()} fallback={<p class='text-gray-500'>loading your rooms...</p>}>
                 <Show when={!errorOwned()} fallback={<p class='text-red-600'>failed to load your rooms: {errorOwned()}</p>}>
-                  <For each={ownerRooms()} fallback={<p class='text-gray-500'>you don't own any rooms yet.</p>}>{(room) => (
+                  <For each={filteredOwnerRooms()} fallback={<p class='text-gray-500'>you don't own any rooms yet.</p>}>{(room) => (
                 <div class="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl border border-gray-200 w-full">
                   <img 
                     src={room.profile_picture
