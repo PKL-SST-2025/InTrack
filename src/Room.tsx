@@ -23,6 +23,7 @@ interface RoomDetails {
   is_owner: boolean;
   filling_frequency?: string | null;
   due_days?: number | null;
+  member_joined_date?: string | null;
   fields: RoomField[];
 }
 
@@ -50,27 +51,7 @@ function formatDateWithOrdinal(dateStr: string) {
 // Use this as the source of truth for 'now'
 const CURRENT_TIME = new Date(now());
 
-function formatDue(dateStr: string) {
-  if (!dateStr) return '';
-  const selected = new Date(dateStr);
-  if (isNaN(selected.getTime())) return '';
-
-  // Remove time part for comparison
-  const now = new Date(CURRENT_TIME);
-  now.setHours(0, 0, 0, 0);
-  selected.setHours(0, 0, 0, 0);
-
-  const diffDays = Math.round((selected.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  let prefix = '';
-  if (diffDays === 0) prefix = 'Today';
-  else if (diffDays === 1) prefix = 'Tomorrow';
-  else if (diffDays === -1) prefix = 'Yesterday';
-  else {
-    // e.g. Jul 10, 2025
-    prefix = selected.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  }
-  return `${prefix}, 11:59 PM`;
-}
+ 
 
 function isPastOrToday(dateStr: string) {
   if (!dateStr) return false;
@@ -80,6 +61,94 @@ function isPastOrToday(dateStr: string) {
   now.setHours(0, 0, 0, 0);
   selected.setHours(0, 0, 0, 0);
   return selected.getTime() <= now.getTime();
+}
+
+function isFuture(dateStr: string) {
+  if (!dateStr) return false;
+  const selected = new Date(dateStr);
+  if (isNaN(selected.getTime())) return false;
+  const now = new Date(CURRENT_TIME);
+  now.setHours(0, 0, 0, 0);
+  selected.setHours(0, 0, 0, 0);
+  return selected.getTime() > now.getTime();
+}
+
+// whether the date is a cycle anchor according to frequency and on/after join
+function isCycleAnchorDate(ds: string, freq?: string | null, joinStr?: string | null): boolean {
+  if (!ds) return false;
+  if (!isOnOrAfterJoin(ds, joinStr)) return false;
+  if (!freq || freq.toLowerCase() === 'daily') return true;
+  const weekdays = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  const idx = weekdays.indexOf(freq.toLowerCase());
+  if (idx === -1) return true; // fallback to daily
+  const d = new Date(ds);
+  d.setHours(0,0,0,0);
+  return d.getDay() === idx;
+}
+
+function isWithinDueWindow(anchorISO: string, dueDays?: number | null): boolean {
+  if (!anchorISO) return false;
+  const nowD = new Date(CURRENT_TIME);
+  nowD.setHours(0,0,0,0);
+  const anchor = new Date(anchorISO);
+  if (isNaN(anchor.getTime())) return false;
+  anchor.setHours(0,0,0,0);
+  const dueISO = addDaysToISO(anchorISO, dueDays ?? 0);
+  const due = new Date(dueISO);
+  if (isNaN(due.getTime())) return false;
+  due.setHours(0,0,0,0);
+  return nowD.getTime() >= anchor.getTime() && nowD.getTime() <= due.getTime();
+}
+
+function isOnOrAfterJoin(dateStr: string, joinStr?: string | null) {
+  if (!dateStr) return false;
+  if (!joinStr) return true; // if unknown, don't block
+  const d = new Date(dateStr);
+  const j = new Date(joinStr);
+  if (isNaN(d.getTime()) || isNaN(j.getTime())) return true;
+  d.setHours(0,0,0,0);
+  j.setHours(0,0,0,0);
+  return d.getTime() >= j.getTime();
+}
+
+function todayISO(): string {
+  const now = new Date(CURRENT_TIME);
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// compute the current cycle anchor date (the single date considered required for this period)
+// - Daily: today
+// - Weekday (e.g., Monday): the most recent occurrence of that weekday on/before today, but not before join date
+function getCurrentCycleDate(freq?: string | null, joinStr?: string | null): string | null {
+  const tISO = todayISO();
+  const t = new Date(tISO);
+  t.setHours(0,0,0,0);
+  if (!freq || freq.toLowerCase() === 'daily') {
+    // respect join date; if joined after today, no cycle yet
+    if (!isOnOrAfterJoin(tISO, joinStr)) return null;
+    return tISO;
+  }
+  const weekdays = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  const idx = weekdays.indexOf(freq.toLowerCase());
+  if (idx === -1) {
+    // unknown freq -> treat as daily fallback
+    if (!isOnOrAfterJoin(tISO, joinStr)) return null;
+    return tISO;
+  }
+  // only count if today is the target weekday
+  if (t.getDay() !== idx) return null;
+  if (!isOnOrAfterJoin(tISO, joinStr)) return null;
+  return tISO;
+}
+
+function isCurrentCycleDate(ds?: string, freq?: string | null, joinStr?: string | null): boolean {
+  if (!ds) return false;
+  const cycle = getCurrentCycleDate(freq, joinStr);
+  if (!cycle) return false;
+  return ds === cycle;
 }
 
 function addDaysToISO(dateStr: string, days: number): string {
@@ -93,16 +162,19 @@ function addDaysToISO(dateStr: string, days: number): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// frequency: "Daily" or weekday name like "Monday", "Tuesday", ...
-function isAllowedByFrequency(dateStr: string, freq?: string | null): boolean {
-  if (!dateStr) return false;
-  if (!freq || freq.toLowerCase() === 'daily') return true;
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return false;
-  const weekdays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const dayName = weekdays[d.getDay()];
-  return dayName.toLowerCase() === freq.toLowerCase();
+// whether the due date (selected date + due_days, by 23:59) has already passed now
+function isPastDue(baseDateStr: string, dueDays?: number | null): boolean {
+  if (!baseDateStr) return false;
+  const add = dueDays ?? 0;
+  const dueISO = addDaysToISO(baseDateStr, add);
+  const dueEnd = new Date(dueISO);
+  if (isNaN(dueEnd.getTime())) return false;
+  dueEnd.setHours(23, 59, 59, 999);
+  const now = new Date(CURRENT_TIME);
+  return now.getTime() > dueEnd.getTime();
 }
+
+ 
 
 // FillingForm component for attendance filling UI
 function FillingForm(props: { dateLabel: string, fields: RoomField[], onCancel: () => void, onSubmit: () => void }) {
@@ -315,6 +387,11 @@ export default function Room() {
           const data = (await res.json()) as RoomDetails;
           setRoom(data);
           setSettingsPfp(data.profile_picture || '');
+          // after room loads, refresh calendar day decorations
+          try {
+            if (fp && (fp as any).redraw) (fp as any).redraw();
+            else if (fp) fp.jumpToDate(fp.selectedDates[0] || new Date(CURRENT_TIME));
+          } catch {}
         } else {
           const t = await res.text();
           console.error('failed to load room:', res.status, t);
@@ -338,6 +415,47 @@ export default function Room() {
       fp = flatpickr(inputRef, {
         dateFormat: 'Y-m-d',
         defaultDate: date() || undefined,
+        onDayCreate: (_dObj, _dStr, _instance, dayElem) => {
+          // remove previous tags
+          dayElem.classList.remove('it-day-open','it-day-missed','it-day-future','it-day-not-required','it-day-today');
+          const d: any = (dayElem as any).dateObj as Date;
+          if (!d) return;
+          // yyyy-mm-dd
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate() + 0).padStart(2, '0');
+          const ds = `${yyyy}-${mm}-${dd}`;
+          const freq = room()?.filling_frequency;
+          const joinStr = room()?.member_joined_date;
+          // before member joined: not required (never fillable)
+          if (!isOnOrAfterJoin(ds, joinStr)) {
+            dayElem.classList.add('it-day-not-required');
+            return;
+          }
+          // non-cycle anchors are never required
+          if (!isCycleAnchorDate(ds, freq, joinStr)) {
+            dayElem.classList.add('it-day-not-required');
+            return;
+          }
+          // future anchor -> not now (grey)
+          if (isFuture(ds)) {
+            dayElem.classList.add('it-day-future');
+            return;
+          }
+          // past/present anchor -> open within due, else missed
+          if (isWithinDueWindow(ds, room()?.due_days ?? 0)) {
+            dayElem.classList.add('it-day-open');
+          } else if (isPastDue(ds, room()?.due_days ?? 0)) {
+            dayElem.classList.add('it-day-missed');
+          } else {
+            // before anchor can't happen due to future check above
+            dayElem.classList.add('it-day-not-required');
+          }
+          // mark today with black outline regardless of status
+          if (ds === todayISO()) {
+            dayElem.classList.add('it-day-today');
+          }
+        },
         onChange: (_: any, dateStr: string) => {
           setDate(dateStr);
           // close any open FillingForm when date changes
@@ -350,6 +468,17 @@ export default function Room() {
   });
   return (
     <div class="min-h-screen bg-[#ededed] p-8 w-full max-w-screen-2xl mx-auto">
+      <style>
+        {`
+        .flatpickr-day.it-day-open { outline: 2px solid #f59e0b; border-radius: 9999px; }
+        .flatpickr-day.it-day-missed { background-color: #fee2e2; color: #b91c1c; border-radius: 9999px; }
+        /* not now but fillable later: full grey with black label */
+        .flatpickr-day.it-day-future { background-color: #e5e7eb; color: #000000; border-radius: 9999px; }
+        .flatpickr-day.it-day-not-required { color: #9ca3af; }
+        /* today: black outline regardless of status */
+        .flatpickr-day.it-day-today { outline: 2px solid #111827; border-radius: 9999px; }
+        `}
+      </style>
       {/* loading and error states */}
       <Show when={loading()}>
         <div class="mb-4 p-3 rounded-lg bg-white border border-gray-200 text-black">loading room...</div>
@@ -437,17 +566,14 @@ export default function Room() {
             <div class="bg-[#fafafa] rounded-xl shadow px-4 py-3 flex items-center gap-2">
               <div class="relative flex-1 flex items-center">
                 <input
-                  ref={el => inputRef = el}
+                  ref={el => (inputRef = el)}
                   type="text"
-                  class="flex-1 bg-transparent outline-none border-none text-black text-lg cursor-pointer"
-                  readOnly
+                  placeholder="YYYY-MM-DD"
+                  class="w-full bg-transparent outline-none text-black text-lg"
                   value={date()}
-                  placeholder="Select date"
-                  style={{'font-family': 'inherit'}}
-                  onClick={() => fp && fp.open()}
+                  readOnly
                 />
                 <button
-                  type="button"
                   class="absolute right-2 bg-white border border-gray-300 rounded-lg p-1 hover:bg-gray-100 transition-colors flex items-center justify-center"
                   onClick={() => fp && fp.open()}
                 >
@@ -456,6 +582,20 @@ export default function Room() {
                   </svg>
                 </button>
               </div>
+            </div>
+            <div class="mt-2 text-base text-black">
+              <span class="font-semibold">Frequency:</span> {(() => {
+                const f = room()?.filling_frequency;
+                if (!f) return 'Daily';
+                return f.charAt(0).toUpperCase() + f.slice(1);
+              })()}
+            </div>
+            <div class="text-base text-black">
+              <span class="font-semibold">Due:</span> {(() => {
+                const d = room()?.due_days ?? 0;
+                const s = d === 1 ? '' : 's';
+                return `${d} day${s} after`;
+              })()}
             </div>
           </div>
           {/* Attendance Details Card */}
@@ -467,66 +607,125 @@ export default function Room() {
                   {formatDateWithOrdinal(date())}
                 </div>
               )}
-              {/* Date Info Card or Filling Form */}
-              {date() ? (
-                isAllowedByFrequency(date(), room()?.filling_frequency) ? (
-                  showFillingForm() ? (
-                    <FillingForm
-                      dateLabel={formatDateWithOrdinal(date())}
-                      fields={room()!.fields}
-                      onCancel={() => {
-                        setShowFillingForm(false);
-                        resetFillingForm();
-                      }}
-                      onSubmit={() => {
-                        setShowFilledPopup(true);
-                        setShowFillingForm(false);
-                        resetFillingForm();
-                      }}
-                    />
-                  ) : (
-                    <>
-                      <div class="bg-white rounded-xl shadow-[0_0_16px_0_rgba(0,0,0,0.10)] p-4 w-full flex flex-col gap-2">
-                        <div class="flex justify-between items-center text-base">
-                          <span class="text-black">Status</span>
-                          <span class="text-red-500 font-semibold">Not filled</span>
-                        </div>
-                        <div class="flex justify-between items-center text-base">
-                          <span class="text-black">Due</span>
-                          <span class="text-black">{formatDue(addDaysToISO(date(), room()?.due_days ?? 0))}</span>
-                        </div>
-                        <div class="mt-2 mb-1 text-black">Filling requirement:</div>
-                        <ul class="list-disc pl-5 text-black text-base">
-                          {room()?.fields?.sort((a,b) => a.ord - b.ord).map(f => (
-                            <li>{f.label} ({f.field_type})</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <button
-                        class="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-lg text-black shadow hover:bg-gray-100 font-semibold transition mt-2"
-                        onClick={() => {
-                          if (isPastOrToday(date())) {
-                            setShowFillingForm(true);
-                          } else {
-                            setShowModal(true);
-                          }
-                        }}
-                      >
-                        Fill
-                      </button>
-                    </>
-                  )
-                ) : (
-                  <>
+              {/* Date Info Card or Filling Form, using cycle + due-window rules */}
+              {date() ? (() => {
+                const ds = date();
+                const freq = room()?.filling_frequency;
+                const joinStr = room()?.member_joined_date;
+                const due = room()?.due_days ?? 0;
+                const afterJoin = isOnOrAfterJoin(ds, joinStr);
+                const anchor = isCycleAnchorDate(ds, freq, joinStr);
+                const future = isFuture(ds);
+                const withinDue = isWithinDueWindow(ds, due);
+                const pastDue = isPastDue(ds, due);
+
+                // Not required: before join or not a cycle anchor -> show status only
+                if (!afterJoin || !anchor) {
+                  return (
                     <div class="bg-white rounded-xl shadow-[0_0_16px_0_rgba(0,0,0,0.10)] p-4 w-full flex flex-col gap-2">
                       <div class="flex justify-between items-center text-base">
                         <span class="text-black">Status</span>
-                        <span class="text-gray-500 font-semibold">No filling required for this date</span>
+                        <span class="text-gray-700 font-semibold">Not required</span>
                       </div>
                     </div>
-                  </>
-                )
-              ) : (
+                  );
+                }
+
+                // Future anchor: not now but is fillable later -> disabled fill
+                if (future) {
+                  return (
+                    <div class="bg-white rounded-xl shadow-[0_0_16px_0_rgba(0,0,0,0.10)] p-4 w-full flex flex-col gap-2">
+                      <div class="flex justify-between items-center text-base">
+                        <span class="text-black">Status</span>
+                        <span class="text-gray-700 font-semibold">Not now</span>
+                      </div>
+                      <div class="flex justify-between items-center text-base">
+                        <span class="text-black">Due</span>
+                        <span class="text-black">{formatDateWithOrdinal(addDaysToISO(ds, due))}</span>
+                      </div>
+                      <button
+                        class="w-full mt-3 bg-gray-300 text-gray-600 rounded-xl px-4 py-3 text-base font-semibold cursor-not-allowed"
+                        disabled
+                        type="button"
+                      >
+                        Fill
+                      </button>
+                    </div>
+                  );
+                }
+
+                // Past due: missed -> disabled button with message
+                if (!withinDue && pastDue) {
+                  return (
+                    <div class="bg-white rounded-xl shadow-[0_0_16px_0_rgba(0,0,0,0.10)] p-4 w-full flex flex-col gap-2">
+                      <div class="flex justify-between items-center text-base">
+                        <span class="text-black">Status</span>
+                        <span class="text-red-600 font-semibold">Missed</span>
+                      </div>
+                      <div class="flex justify-between items-center text-base">
+                        <span class="text-black">Due</span>
+                        <span class="text-black">{formatDateWithOrdinal(addDaysToISO(ds, due))}</span>
+                      </div>
+                      <button
+                        class="w-full mt-3 bg-gray-300 text-gray-600 rounded-xl px-4 py-3 text-base font-semibold cursor-not-allowed"
+                        disabled
+                        type="button"
+                      >
+                        You missed this
+                      </button>
+                    </div>
+                  );
+                }
+
+                // Within due window (today between anchor and due): not filled yet -> enable filling
+                if (withinDue) {
+                  if (showFillingForm()) {
+                    return (
+                      <FillingForm
+                        dateLabel={formatDateWithOrdinal(ds)}
+                        fields={room()!.fields}
+                        onCancel={() => {
+                          setShowFillingForm(false);
+                          resetFillingForm();
+                        }}
+                        onSubmit={() => {
+                          setShowFilledPopup(true);
+                          setShowFillingForm(false);
+                          resetFillingForm();
+                        }}
+                      />
+                    );
+                  }
+                  return (
+                    <div class="bg-white rounded-xl shadow-[0_0_16px_0_rgba(0,0,0,0.10)] p-4 w-full flex flex-col gap-2">
+                      <div class="flex justify-between items-center text-base">
+                        <span class="text-black">Status</span>
+                        <span class="text-orange-500 font-semibold">Not filled</span>
+                      </div>
+                      <div class="flex justify-between items-center text-base">
+                        <span class="text-black">Due</span>
+                        <span class="text-black">{formatDateWithOrdinal(addDaysToISO(ds, due))}</span>
+                      </div>
+                      <button
+                        class="w-full mt-3 bg-orange-500 text-white rounded-xl px-4 py-3 text-base font-semibold shadow hover:bg-orange-600 transition"
+                        onClick={() => setShowFillingForm(true)}
+                      >
+                        Fill
+                      </button>
+                    </div>
+                  );
+                }
+
+                // Fallback (shouldn't reach): show not required
+                return (
+                  <div class="bg-white rounded-xl shadow-[0_0_16px_0_rgba(0,0,0,0.10)] p-4 w-full flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-base">
+                      <span class="text-black">Status</span>
+                      <span class="text-gray-700 font-semibold">Not required</span>
+                    </div>
+                  </div>
+                );
+              })() : (
                 <span class="text-gray-400 text-base">No date chosen yet...</span>
               )}
               {/* Modal Popup for not today only */}
