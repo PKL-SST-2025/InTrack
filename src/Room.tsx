@@ -516,7 +516,7 @@ export default function Room() {
             {manageMode() ? 'view' : 'manage'}
           </a>
         )}
-        <button class="bg-white border border-gray-300 rounded-lg px-5 py-2 text-black shadow hover:bg-gray-100" onClick={() => navigate('/RoomLeave')}>Leave</button>
+        <button class="bg-white border border-gray-300 rounded-lg px-5 py-2 text-black shadow hover:bg-gray-100" onClick={() => navigate(`/RoomLeave?id=${room()?.id}`)}>Leave</button>
       </div>
   </div>
 </div>
