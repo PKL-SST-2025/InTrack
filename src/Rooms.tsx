@@ -105,9 +105,9 @@ export default function Rooms() {
           
           <div class="bg-white rounded-2xl p-6 shadow-[0_0_16px_0_rgba(0,0,0,0.10)] w-full">
             <div class="grid gap-4 mb-6 w-full">
-              <Show when={!loadingJoined()} fallback={<p class='text-gray-500'>loading joined rooms...</p>}>
-                <Show when={!errorJoined()} fallback={<p class='text-red-600'>failed to load joined rooms: {errorJoined()}</p>}>
-                  <For each={filteredJoinedRooms()} fallback={<p class='text-gray-500'>you haven't joined any rooms yet.</p>}>{(room) => (
+              <Show when={!loadingJoined()} fallback={<p class='text-gray-500'>Loading joined rooms...</p>}>
+                <Show when={!errorJoined()} fallback={<p class='text-red-600'>Failed to load joined rooms: {errorJoined()}</p>}>
+                  <For each={filteredJoinedRooms()} fallback={<p class='text-gray-500'>You haven't joined any rooms yet.</p>}>{(room) => (
                 <div class="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl border border-gray-200 w-full">
                   <img 
                     src={room.profile_picture

@@ -245,7 +245,7 @@ const UserSettings = () => {
                     ? (profilePicture().startsWith('/')
                         ? `http://localhost:8080${profilePicture()}`
                         : profilePicture())
-                    : "https://api.dicebear.com/7.x/bottts/svg?seed=Dzul Fikri")
+                    : "https://static.vecteezy.com/system/resources/thumbnails/009/292/244/small/default-avatar-icon-of-social-media-user-vector.jpg")
                 }
                 alt="Profile" 
                 class="rounded-full border-4 border-white shadow-[0_0_16px_0_rgba(0,0,0,0.10)] w-32 h-32 sm:w-40 sm:h-40 object-cover" 
